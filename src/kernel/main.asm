@@ -1,20 +1,12 @@
 ; ORG is telling the assembler that we do all our addressing relative to that address
-ORG  0x7C00   
+ORG  0x0   
 
 ; In the start we start with 16-bits
 BITS 16    
 
-main:
-    ; we initialize every thing to zero for reset 
-    MOV  ax,0
-    MOV  ds,ax       ; ds = data segment register 
-    MOV  es,ax       ; es = extra segment register 
-    MOV  ss,ax       ; ss = stack segment register 
-     
-    MOV  sp,0x7C00   ; sp = stack pointer 
-    MOV  si,os_boot_msg 
-    CALL print
-    HLT              ; To stop the cpu 
+start:
+    MOV si,os_boot_msg 
+    CALL print   
 
 halt:
     JMP halt
@@ -42,8 +34,6 @@ done_print:
     RET
 
 ; I define the string i want to print when we boot 
-os_boot_msg: DB 'Our OS has booted!', 0x0D, 0x0A, 0
+os_boot_msg: DB 'Our OS has booted', 0x0D, 0x0A, 0
 
-; Times repeat what i tell number of times and ($-$$) give us how much byte our program take 
-TIMES 510-($-$$) DB 0 
-DW 0AA55h
+

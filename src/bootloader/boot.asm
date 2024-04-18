@@ -4,8 +4,8 @@ ORG  0x7C00
 ; In the start we start with 16-bits
 BITS 16    
 
-JMP SHORT main ; jump inside the file and this to ignore the header and jump to the main directly   
-NOP
+JMP SHORT main ; First two bytes - jump to main  
+NOP            ; Needed to make 3 bytes at the beginning total 
 
 ; Disk Header value 
 bdb_oem:                   DB      'MSWIN4.1'
@@ -47,7 +47,117 @@ main:
     
     MOV  si,os_boot_msg 
     CALL print
-    HLT              ; To stop the cpu 
+    ; 4 segments 
+    ; reserved segment: 1 sector 
+    ; FAT: 9 * 2 = 18 sectors  
+    ; Root direcotry: 
+    ; Data
+
+    MOV ax,[bdb_sectors_per_fat]
+    MOV bl,[bdb_fat_count]
+    XOR bh,bh 
+    MUL bx 
+    ADD ax,[bdb_reserved_sectors] ; LBA of the root directory 
+    PUSH ax 
+    MOV ax,[bdb_dir_entries_count]
+    SHL ax,5 ; ax *= 32 
+    XOR dx,dx 
+    DIV word [bdb_bytes_per_sector]; (32*num of enteries)/bytes per sector 
+
+    TEST dx,dx 
+    JZ root_dir_after 
+    INC ax
+
+root_dir_after:
+    MOV cl,al
+    POP ax
+    MOV dl,[ebr_drive_number]
+    MOV bx,buffer 
+    CALL disk_read 
+
+    XOR bx,bx 
+    MOV di,buffer 
+
+search_kernel:
+    MOV si,file_kernel_bin
+    MOV cx,11 
+    PUSH di 
+    REPE CMPSB 
+    POP di 
+    JE found_kernel 
+
+    ADD di,32 
+    INC bx 
+    CMP bx,[bdb_dir_entries_count]
+    JL search_kernel 
+
+    JMP kernel_not_found 
+
+kernel_not_found:
+    MOV si, msg_kernel_not_found 
+    CALL print 
+ 
+    JMP halt 
+
+found_kernel:
+    MOV ax,[di+26]
+    MOV [kernel_cluster],ax
+
+    MOV ax,[bdb_reserved_sectors]
+    MOV bx,buffer 
+    MOV cl,[bdb_sectors_per_fat]
+    MOV dl,[ebr_drive_number]
+
+    CALL disk_read
+
+    MOV bx,kernel_load_segment
+    MOV es,bx 
+    MOV bx,kernel_load_offset 
+
+load_kernel_loop:
+    MOV ax,[kernel_cluster]
+    ADD ax,31 
+    MOV cl,1 
+    MOV dl,[ebr_drive_number]
+
+    CALL disk_read 
+    
+    ADD bx,[bdb_bytes_per_sector]
+
+    MOV ax,[kernel_cluster]; (kernel_cluster * 3)/2 
+    MOV cx,3 
+    MUL cx 
+    MOV cx,2 
+    DIV cx 
+
+    MOV si,buffer
+    ADD si,ax 
+    MOV ax,[ds:si] 
+
+    OR dx,dx 
+    JZ even 
+
+odd:
+    SHR ax,4 
+    JMP next_cluster_after 
+
+even:   
+    AND ax,0x0FFF
+
+next_cluster_after:
+    CMP ax,0x0FF8 
+    JAE read_finish 
+
+    MOV [kernel_cluster],ax 
+    JMP load_kernel_loop 
+
+read_finish:
+    MOV dl,[ebr_drive_number]
+    MOV ax,kernel_load_segment 
+    MOV ds,ax 
+    MOV es,ax 
+
+    JMP kernel_load_segment:kernel_load_offset 
 
 halt:
     JMP halt
@@ -60,17 +170,18 @@ lba_to_chs:
     PUSH ax
     PUSH dx 
     
-    XOR dx,dx 
-    DIV word [bdb_sectors_per_track] ;(LBA % sectors per track ) <- sector 
+    XOR dx,dx ; make it all zeros 
+    DIV word [bdb_sectors_per_track] ;(LBA % sectors per track ) + 1 <- sector 
     
-    INC dx  ;sector 
+    INC dx  ; dx now have the reminder of last DIV then we add 1 sector 
     MOV cx,dx 
     
-    XOR dx,dx
-    ;head = (LBA/sectors per track) % number of heads 
-    ;cylinder: (LBA / sectors per track) / number of heads 
-
+    XOR dx,dx ; make it zeros to make another division   
+    
+    ; head = (LBA/sectors per track) % number of heads 
+    ; cylinder: (LBA / sectors per track) / number of heads 
     DIV word [bdb_heads]
+
 
     MOV dh,dl ; head 
 
@@ -95,6 +206,7 @@ disk_read:
     
     MOV ah,02h 
     MOV di,3 ; counter 
+
 retry:
     STC     ; set a carry 
     INT 13h 
@@ -109,7 +221,7 @@ retry:
 fail_disk_read:
     MOV si,read_failure
     CALL print 
-    HTL 
+    
     JMP halt 
 
 done_read:
@@ -152,10 +264,18 @@ done_print:
     RET
 
 ; I define the string i want to print when we boot 
-os_boot_msg:  DB 'Our OS has booted!', 0x0D, 0x0A, 0
+os_boot_msg:            DB 'Loading...', 0x0D,0x0A,0
+read_failure            DB 'Faild to read disk!',0x0D,0x0A,0
+file_kernel_bin         DB 'KERNEL  BIN' 
+msg_kernel_not_found    DB 'KERNEL.BIN not found!'
+kernel_cluster          DW 0 
 
-read_failure: DB 'Faild to read disk!', 0x0D, 0x0A, 0
+kernel_load_segment     EQU 0x2000 
+kernel_load_offset      EQU 0
 
 ; Times repeat what i tell number of times and ($-$$) give us how much byte our program take 
 TIMES 510-($-$$) DB 0 
 DW 0AA55h
+
+buffer:
+
