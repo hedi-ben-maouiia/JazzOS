@@ -28,8 +28,9 @@ void _cdecl printf(const char* fmt,...){
 
    argp++;
    while(*fmt){
+    switch(state){
        case PRINTF_STATE_START:
-           if(*fmt == "%"){
+           if(*fmt == '%'){
                state = PRINTF_STATE_LENGTH;
            } else {
                putc(*fmt);
@@ -37,7 +38,7 @@ void _cdecl printf(const char* fmt,...){
            break;
        case PRINTF_STATE_LENGTH:
            if(*fmt == 'h'){
-               lenght = PRINTF_LENGTH_SHORT;
+               length = PRINTF_LENGTH_SHORT;
                state = PRINTF_STATE_SHORT;
            }else if(*fmt == 'l'){
                length = PRINTF_LENGTH_LONG;
@@ -90,7 +91,7 @@ void _cdecl printf(const char* fmt,...){
                     case 'u':
                         radix = 10;
                         sign = false;
-                        argp = printf_number(argp,length,sing,radix);
+                        argp = printf_number(argp,length,sign,radix);
                         break;
                     case 'X':
                     case 'x':
@@ -112,6 +113,8 @@ void _cdecl printf(const char* fmt,...){
                 radix = 10;
                 sign = false;
                 break;
+            }
+        fmt++;
    }
 }
 
@@ -128,9 +131,56 @@ int * printf_number(int * argp,int length,bool sign,int radix){
         case PRINTF_LENGTH_SHORT:
         case PRINTF_LENGTH_START:
             if(sign){
-
+                int n = *argp;
+                if(n < 0){
+                    n = -n;
+                    number_sign = -1;
+                }
+                number = (uint64_t) n;
+            }else {
+                number = *(unsigned int*)argp;
             }
+            argp++;
+            break;
         case PRINTF_LENGTH_LONG:
+            if(sign){
+                long int n = *(long int*)argp;
+                if(n < 0){
+                    n = -n;
+                    number_sign = -1;
+                }
+                number = (unsigned long long) n;
+            }else {
+                number = *(unsigned long int*)argp;
+            }
+            argp += 2;
+            break;
         case PRINTF_LENGTH_LONG_LONG:
+            if(sign){
+                long long int n = *(long long int*)argp;
+                if(n < 0){
+                    n = -n;
+                    number_sign = -1;
+                }
+                number = (unsigned long long ) n;
+            }else {
+                number = *(unsigned long long int*)argp;
+            }
+            argp += 4;
+            break; 
     }
+    do{
+        uint32_t rem;
+        x86_div64_32(number,radix,&number,&rem);
+        buffer[pos++] = possible_chars[rem];
+    } while(number > 0);
+
+    if(sign && number_sign < 0){
+        buffer[pos++] = '-';
+    }
+    while(--pos >= 0){
+        putc(buffer[pos]);
+    }
+
+    return argp;
 }

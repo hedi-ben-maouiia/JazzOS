@@ -1,10 +1,12 @@
+#include "stdint.h"
 #pragma once 
 
 void putc(char c);
-void puts(const char *str);
+void puts(const char* s);
 void puts_f(const char far* s);
 void _cdecl printf(const char* fmt,...);
-int * printf_number(int * argp,int length,bool sign,int radix);
+int * printf_number(int*,int,bool,int);
+
 #define PRINTF_STATE_START 0 
 #define PRINTF_STATE_LENGTH 1 
 #define PRINTF_STATE_SHORT 2 
