@@ -1,0 +1,94 @@
+Open Watcom Linker Version 2.0 beta Apr 17 2024 01:45:34 (32-bit)
+Copyright (c) 2002-2024 The Open Watcom Contributors. All Rights Reserved.
+Portions Copyright (c) 1985-2002 Sybase, Inc. All Rights Reserved.
+Created on:       24/04/21 21:10:29
+Executable Image: build/kernel.bin
+creating a RAW Binary Image executable
+
+
+                        +------------+
+                        |   Groups   |
+                        +------------+
+
+Group                           Address              Size
+=====                           =======              ====
+
+DGROUP                          00000390             0000005c
+
+
+
+                        +--------------+
+                        |   Segments   |
+                        +--------------+
+
+Segment                Class          Group          Address         Size
+=======                =====          =====          =======         ====
+
+_ENTRY                 CODE           AUTO           00000000        00000010
+_TEXT                  CODE           AUTO           00000010        0000037f
+CONST                  DATA           DGROUP         00000390        0000004a
+CONST2                 DATA           DGROUP         000003da        00000011
+_DATA                  DATA           DGROUP         000003ec        00000000
+
+
+                        +----------------+
+                        |   Memory Map   |
+                        +----------------+
+
+* = unreferenced symbol
++ = symbol only referenced locally
+
+Address        Symbol
+=======        ======
+
+Module: build/kernel/asm/main.obj(src/kernel/main.asm)
+00000000       entry
+Module: build/kernel/asm/print.obj(src/kernel/print.asm)
+00000010       _x86_div64_32
+0000003e       _x86_Video_WriteCharTeletype
+Module: build/kernel/c/main.obj(/home/kira/Dev/projects/JazzOS/src/kernel/main.c)
+00000051       _cstart_
+Module: build/kernel/c/stdio.obj(/home/kira/Dev/projects/JazzOS/src/kernel/stdio.c)
+00000094+      putc_
+000000a7       puts_
+000000b8+      puts_f_
+000000d6       _printf
+000001fa+      printf_number_
+000003da+      _possible_chars
+
+
+                        +---------------------+
+                        |   Module Segments   |
+                        +---------------------+
+
+! = 32-bit segment
+c = initialized communal data
+
+Module          Segment               Class           Address         Size
+======          =======               =====           =======         ====
+
+src/kernel/main.asm
+                _ENTRY                CODE           00000000         00000010
+src/kernel/print.asm
+                _TEXT                 CODE           00000010         00000041
+/home/kira/Dev/projects/JazzOS/src/kernel/main.c
+                _TEXT                 CODE           00000051         00000043
+                CONST                 DATA           00000390         0000004a
+                CONST2                DATA           000003da         00000000
+                _DATA                 DATA           000003ec         00000000
+/home/kira/Dev/projects/JazzOS/src/kernel/stdio.c
+                _TEXT                 CODE           00000094         000002fb
+                CONST                 DATA           000003da         00000000
+                CONST2                DATA           000003da         00000011
+                _DATA                 DATA           000003ec         00000000
+Warning! W1014: stack segment not found
+
+
+                        +-----------------------+
+                        |   Linker Statistics   |
+                        +-----------------------+
+
+Stack size:  0200 (512.)
+Memory size:  03ec (1004.)
+Entry point address: 00000000
+Link time: 00:00.00
